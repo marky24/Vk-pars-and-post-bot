@@ -2,18 +2,30 @@ import vk
 import logging
 import sqlite3
 import logging
+import unittest
 
 vk_api=object()
-deep=6
+def poptime(l,eps):
+    k=0
+    for i in l:
+        k=k+1
+    poptimes=k//eps
+    return poptimes
+
     
-def initparser(public):
+def initparser(public,deep):
+    eps=5
     bad_list=get_bad_wallist(public,deep)
     good_list=bad_to_good(bad_list)
     good_list.sort(key=lambda item: item[1])
     final=good_to_final(good_list)
-    
     final_no_dublicate=dublicate(final)
-    return final_no_dublicate
+    final_no_dublicate_shorted=[]
+    x=poptime( final_no_dublicate, eps)
+    for i in range(x):
+        final_no_dublicate_shorted.append(final_no_dublicate.pop())
+        
+    return final_no_dublicate_shorted
 
 def insert_to_big_DB(l):
     big_DB = sqlite3.connect('big_aneks.db')
@@ -37,15 +49,18 @@ def unique(lst):
     return result
 
 def main():
-    temp_list=[]
-    spisok=['anekdodator']
+    deep=5
     connect_to_vk('6015549', '+79117381261', 'pass')
-    for i in spisok:
-        temp_list=temp_list+initparser(i)
-    uniq_temp_list=unique(temp_list)
-    uniq_final_list=dublicate(uniq_temp_list)
-    list_to_DB(uniq_final_list)
-    insert_to_big_DB(uniq_final_list)
+    if isempty:
+        temp_list=[]
+        spisok=['anekdodator']
+        for i in spisok:
+            temp_list=temp_list+initparser(i,deep)
+        uniq_temp_list=unique(temp_list)
+        uniq_final_list=dublicate(uniq_temp_list)
+        list_to_DB(uniq_final_list)
+        insert_to_big_DB(uniq_final_list)
+    poster()
     
     
 def get_bad_wallist(name,num):
@@ -77,9 +92,12 @@ def list_to_DB(l):
 def poster():
     pass
 
-def if_empty():
-    pass
-
+def isempty():
+    conn = sqlite3.connect('temp_aneks.db')
+    if conn.execute('SELECT * FROM aneks').fetchall()==[]:
+        return True
+    else:
+        return False
 def dublicate(final):
     big_DB = sqlite3.connect('big_aneks.db')
     DBspisok=big_DB.execute('SELECT * FROM aneks').fetchall()
@@ -88,8 +106,15 @@ def dublicate(final):
             if i[0]==j:
                 final.remove(j)
     return final
-                
+class Tests(unittest.TestCase):
+    def test_lists_1(self):
+        self.assertEqual(initparser('testgroupnum2',6), ['Quatre'] )
+    def test_lists_2(self):
+        self.assertEqual(initparser('testgroupnum1',6),['Трииис'])
+        
+
     
 if __name__ == '__main__':
     main()
+    unittest.main()
 
