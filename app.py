@@ -4,8 +4,16 @@ import sqlite3
 import logging
 import unittest
 import os
-
+import random
+import time
+from collections import OrderedDict
 vk_api=object()
+def popfrombase(base):
+    l=base.execute('SELECT * from aneks').fetchall()
+    text=l.pop()
+    base.execute('DELETE FROM aneks WHERE anek=(?)',text)
+    return text[0]
+    
 def clear_bases():
     path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'big_aneks.db')
     os.remove(path)
@@ -48,8 +56,8 @@ def poptime(l,eps):
 
     
 def initparser(public,deep):
-    eps=5
-    bad_list=get_bad_wallist(public,deep))
+    eps=12
+    bad_list=get_bad_wallist(public,deep)
     good_list=bad_to_good(bad_list)
     good_list.sort(key=lambda item: item[1])
     final=good_to_final(good_list)
@@ -73,27 +81,25 @@ def connect_to_vk(appid,number,password):
      vk_api=vk.API(session)
      
 def unique(lst):
-    seen = set()
-    result = []
-    for x in lst:
-        if x in seen:
-            continue
-        seen.add(x)
-        result.append(x)
-    return result
+    d = OrderedDict((x,None) for x in lst)
+    return list(d.keys())
 
 def main():
+    
     clear_bases()
     generate_bases()
-    deep=5
-    connect_to_vk('6015549', '+79117381261', 'z1j1Xg')
+    
+    deep=100
+    connect_to_vk('app_id', 'num', 'pass')
     if isempty:
         temp_list=[]
-        spisok=['testgroupnum2','testgroupnum1']
+        spisok=['anecdote','proprobki','mdk.anekdot','sexy.anekdots','anekdot_zdes','anekdot__pro','smeshnye_anekdoty_rf','baneks','anekdotbests']
         for i in spisok:
             temp_list=temp_list+initparser(i,deep)
+            time.sleep(5)
         uniq_temp_list=unique(temp_list)
         uniq_final_list=dublicate(uniq_temp_list)
+        random.shuffle(uniq_final_list)
         list_to_DB(uniq_final_list)
         insert_to_big_DB(uniq_final_list)
     poster()
@@ -127,7 +133,12 @@ def list_to_DB(l):
     conn.close()
 
 def poster():
-    pass
+    conn = sqlite3.connect('temp_aneks.db')
+    Text=popfrombase(conn)
+    Text=Text.replace('<br>','\n')
+    vk_api.wall.post(owner_id='-148261358',message=Text,from_group='1')
+    conn.commit()
+    conn.close()
 
 def isempty():
     conn = sqlite3.connect('temp_aneks.db')
@@ -165,5 +176,4 @@ class Tests(unittest.TestCase):
     
 if __name__ == '__main__':
     main()
-    unittest.main()
-
+    #unittest.main()
