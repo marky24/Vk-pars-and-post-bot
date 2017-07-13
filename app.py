@@ -91,7 +91,7 @@ def main():
     
     deep=100
     connect_to_vk('app_id', 'num', 'pass')
-    if isempty:
+    if isempty()==True:
         temp_list=[]
         spisok=['anecdote','proprobki','mdk.anekdot','sexy.anekdots','anekdot_zdes','anekdot__pro','smeshnye_anekdoty_rf','baneks','anekdotbests']
         for i in spisok:
