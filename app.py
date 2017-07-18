@@ -117,7 +117,7 @@ def poster():
 def isempty():
     with sqlite3.connect('temp_aneks.db') as conn:
         (sp,) = conn.execute('SELECT COUNT(*) FROM aneks').fetchone()
-    return sp > 0
+    return !(sp > 0)
     
 def dublicate(final):
     with sqlite3.connect('big_aneks.db') as big_DB:
