@@ -7,12 +7,14 @@ import os
 import random
 import time
 from collections import OrderedDict
+
 vk_api=object()
+
 def popfrombase(base):
-    l=base.execute('SELECT * from aneks').fetchall()
-    text=l.pop()
-    base.execute('DELETE FROM aneks WHERE anek=(?)',text)
-    return text[0]
+    id, text = base.execute('SELECT ROWID, * from aneks LIMIT 1').fetchone()
+    base.execute('DELETE FROM aneks WHERE ROWID=?', id)
+    base.commit()
+    return text
     
 def clear_bases():
     path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'big_aneks.db')
@@ -21,40 +23,26 @@ def clear_bases():
     os.remove(path)
     
 def generate_bases():
-    conn = sqlite3.connect('big_aneks.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE aneks (anek text)''')
-    conn.commit()
-    conn.close()
-    conn = sqlite3.connect('temp_aneks.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE aneks (anek text)''')
-    conn.commit()
-    conn.close()
+    with sqlite3.connect('big_aneks.db') as conn:
+        conn.execute('''CREATE TABLE aneks (anek text)''')
+        conn.commit()
+    with sqlite3.connect('temp_aneks.db') as conn:
+        conn.execute('''CREATE TABLE aneks (anek text)''')
+        conn.commit()
 
 def show_temp_aneks():
-    conn = sqlite3.connect('temp_aneks.db')
-    ret=conn.execute('SELECT * FROM aneks').fetchall()
-    conn.commit()
-    conn.close()
+    with sqlite3.connect('temp_aneks.db') as conn:
+        ret=conn.execute('SELECT * FROM aneks').fetchall()
     return ret
 
 def show_big_aneks():
-    conn = sqlite3.connect('big_aneks.db')
-    ret=conn.execute('SELECT * FROM aneks').fetchall()
-    conn.commit()
-    conn.close()
+    with sqlite3.connect('big_aneks.db') as conn:
+        ret=conn.execute('SELECT * FROM aneks').fetchall()
     return ret
 
-
 def poptime(l,eps):
-    k=0
-    for i in l:
-        k=k+1
-    poptimes=k//eps
-    return poptimes
+    return len(l)//eps
 
-    
 def initparser(public,deep):
     eps=12
     bad_list=get_bad_wallist(public,deep)
@@ -69,11 +57,9 @@ def initparser(public,deep):
     return final_no_dublicate_shorted
 
 def insert_to_big_DB(l):
-    big_DB = sqlite3.connect('big_aneks.db')
-    c=big_DB.cursor()
-    c.executemany('INSERT INTO aneks VALUES(?)',[[a] for a in l])
-    big_DB.commit()
-    big_DB.close()
+    with sqlite3.connect('big_aneks.db') as big_DB:
+        big_DB.executemany('INSERT INTO aneks VALUES(?)',[[a] for a in l])
+        big_DB.commit()
 
 def connect_to_vk(appid,number,password):
      session = vk.AuthSession(appid, number, password, scope='wall, messages')
@@ -104,62 +90,43 @@ def main():
         insert_to_big_DB(uniq_final_list)
     poster()
     
-    
 def get_bad_wallist(name,num):
      s = vk_api.wall.get(domain=name, count=num)
      s.pop(0)
      return s
     
 def bad_to_good(badone):
-    goodone=[]
-    for i in badone:
-        if (i.get('attachment','Never')) != 'Never':
-            badone.remove(i)
-    for i in badone:
-        goodone.append([i['text'],i['likes']['count']])
+    badone = [i for i in badone if i.get('attachment', 'Never') == 'Never']
+    goodone = [(i['text'],i['likes']['count']) for i in badone]
     return goodone
 
 def good_to_final(s):
-    bestone=[]
-    for i in s:
-        bestone.append(i.pop(0))
-    return bestone
+    return [i.pop(0) for i in s]
 
 def list_to_DB(l):
-    conn = sqlite3.connect('temp_aneks.db')
-    c = conn.cursor()
-    c.executemany('INSERT INTO aneks VALUES(?)',[[a] for a in l])
-    conn.commit()
-    conn.close()
+    with sqlite3.connect('temp_aneks.db') as conn:
+        conn.executemany('INSERT INTO aneks VALUES(?)',[[a] for a in l])
+        conn.commit()
 
 def poster():
-    conn = sqlite3.connect('temp_aneks.db')
-    Text=popfrombase(conn)
-    Text=Text.replace('<br>','\n')
+    with sqlite3.connect('temp_aneks.db') as conn:
+        Text = popfrombase(conn)
+    Text = Text.replace('<br>','\n')
     vk_api.wall.post(owner_id='-148261358',message=Text,from_group='1')
-    conn.commit()
-    conn.close()
 
 def isempty():
-    conn = sqlite3.connect('temp_aneks.db')
-    sp=conn.execute('SELECT * FROM aneks').fetchall()
-    conn.commit()
-    conn.close()
-    if sp==[]:
-        return True
-    else:
-        return False
+    with sqlite3.connect('temp_aneks.db') as conn:
+        (sp,) = conn.execute('SELECT COUNT(*) FROM aneks').fetchone()
+    return sp > 0
     
 def dublicate(final):
-    big_DB = sqlite3.connect('big_aneks.db')
-    DBspisok=big_DB.execute('SELECT * FROM aneks').fetchall()
-    for i in DBspisok:
-        for j in final:
-            if i[0]==j:
-                final.remove(j)
-    big_DB.commit()
-    big_DB.close()
+    with sqlite3.connect('big_aneks.db') as big_DB:
+        for i in big_DB.execute('SELECT * FROM aneks'):
+            if i[0] in final:
+                final.remove(i[0])
     return final
+
+
 class Tests(unittest.TestCase):
     '''
     def test_lists_1(self):
